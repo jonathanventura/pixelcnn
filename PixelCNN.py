@@ -19,7 +19,7 @@ class PixelCNN(object):
                             batch_size=opt.batch_size)
         
         with tf.name_scope("data_loading"):
-            images, labels = loader.load_train_batch()
+            images, labels = loader.load_batch()
             output_dim = images.get_shape()[3].value
 
         with tf.name_scope("prediction"):
@@ -45,12 +45,19 @@ class PixelCNN(object):
         self.total_loss = total_loss
         self.images = images
         self.labels = labels
-
+    
     def collect_summaries(self):
         opt = self.opt
-        tf.summary.scalar("total_loss", self.total_loss)
-        tf.summary.image('image', self.images, max_outputs=5)
-        tf.summary.image('pred', tf.clip_by_value(self.pred,0.,1.), max_outputs=5)
+        
+        tf.summary.scalar('loss', self.total_loss, collections=['train'], family='train')
+        tf.summary.image('image', self.images, max_outputs=5, collections=['train'], family='train')
+        tf.summary.image('pred', tf.clip_by_value(self.pred,0.,1.), max_outputs=5,collections=['train'], family='train')
+        self.train_summary_op = tf.summary.merge_all('train')
+
+        tf.summary.scalar('loss', self.total_loss, collections=['test'], family='test')
+        tf.summary.image('image', self.images, max_outputs=5, collections=['test'], family='test')
+        tf.summary.image('pred', tf.clip_by_value(self.pred,0.,1.), max_outputs=5, collections=['test'], family='test')
+        self.test_summary_op = tf.summary.merge_all('test')
 
     def train(self, opt):
         self.opt = opt
@@ -91,7 +98,7 @@ class PixelCNN(object):
 
                 if step % opt.summary_freq == 0:
                     fetches["loss"] = self.total_loss
-                    fetches["summary"] = sv.summary_op
+                    fetches["summary"] = self.train_summary_op
 
                 if step == 2:
                     options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -106,11 +113,21 @@ class PixelCNN(object):
                 gs = results["global_step"]
 
                 if step % opt.summary_freq == 0:
-                    sv.summary_writer.add_summary(results["summary"], gs)
-                    print("%6d time: %4.4f/it loss: %.3f" \
+                    self.loader.setup_testing(sess)
+                    test_fetches = {
+                        "loss": self.total_loss,
+                        "summary": self.test_summary_op
+                    }
+                    test_results = sess.run(test_fetches)
+                    self.loader.setup_training(sess)
+
+                    sv.summary_computed(sess,results["summary"], gs)
+                    sv.summary_computed(sess,test_results["summary"], gs)
+
+                    print("%6d time: %4.4f/it train loss: %.3f, test loss: %.3f" \
                             % (step, \
                                 (time.time() - start_time)/opt.summary_freq, 
-                                results["loss"]))
+                                results["loss"],test_results["loss"]))
                     start_time = time.time()
 
                 if step % opt.save_latest_freq == 0:
