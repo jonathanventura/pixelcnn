@@ -19,7 +19,8 @@ class PixelCNN(object):
                             batch_size=opt.batch_size)
         
         with tf.name_scope("data_loading"):
-            images, labels = loader.load_batch()
+            images = loader.X_ph
+            labels = loader.y_ph
             output_dim = images.get_shape()[3].value
 
         with tf.name_scope("prediction"):
@@ -76,7 +77,6 @@ class PixelCNN(object):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         with sv.managed_session(config=config) as sess:
-            self.loader.setup_training(sess)
             print('Trainable variables: ')
             for var in tf.trainable_variables():
                 print(var.name)
@@ -99,27 +99,36 @@ class PixelCNN(object):
                 if step % opt.summary_freq == 0:
                     fetches["loss"] = self.total_loss
                     fetches["summary"] = self.train_summary_op
+                
+                X_train, y_train = self.loader.load_train_batch()
+                feed_dict = {
+                    self.loader.X_ph: X_train,
+                    self.loader.y_ph: y_train
+                }
 
                 if step == 2:
                     options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                     run_metadata = tf.RunMetadata()
-                    results = sess.run(fetches, options=options, run_metadata=run_metadata)
+                    results = sess.run(fetches, feed_dict=feed_dict, options=options, run_metadata=run_metadata)
                     fetched_timeline = timeline.Timeline(run_metadata.step_stats)
                     chrome_trace = fetched_timeline.generate_chrome_trace_format()
                     with open('timeline.json', 'w') as f:
                         f.write(chrome_trace)
                 else:
-                    results = sess.run(fetches)
+                    results = sess.run(fetches,feed_dict=feed_dict)
                 gs = results["global_step"]
 
                 if step % opt.summary_freq == 0:
-                    self.loader.setup_testing(sess)
                     test_fetches = {
                         "loss": self.total_loss,
                         "summary": self.test_summary_op
                     }
-                    test_results = sess.run(test_fetches)
-                    self.loader.setup_training(sess)
+                    X_test, y_test = self.loader.load_test_batch()
+                    test_feed_dict = {
+                        self.loader.X_ph: X_test,
+                        self.loader_y_ph: y_test
+                    }
+                    test_results = sess.run(test_fetches,feed_dict=test_feed_dict)
 
                     sv.summary_computed(sess,results["summary"], gs)
                     sv.summary_computed(sess,test_results["summary"], gs)

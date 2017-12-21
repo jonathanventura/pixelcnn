@@ -4,6 +4,12 @@ import random
 import tensorflow as tf
 import numpy as np
 
+def _random_batch(batch_size,X_in,y_in):
+    inds = np.random.randint(len(X_in),size=batch_size)
+    X = X_in[inds]
+    y = y_in[inds]
+    return X, y
+
 class DataLoader(object):
     def __init__(self, 
                  dataset_name=None,
@@ -36,48 +42,16 @@ class DataLoader(object):
             self.y_test = y_test
             self.X_ph = tf.placeholder('float32',(None,28,28,1))
             self.y_ph = tf.placeholder('float32',(None,10))
-            
-            self.has_labels = True
         else:
             raise ValueError('unknown dataset name %s'%dataset_name)
 
-        if self.has_labels:
-            train_dataset = tf.data.Dataset.from_tensor_slices((self.X_ph,self.y_ph))
-            test_dataset = tf.data.Dataset.from_tensor_slices((self.X_ph,self.y_ph))
-        else:
-            train_dataset = tf.data.Dataset.from_tensor_slices((self.X_ph))
-            test_dataset = tf.data.Dataset.from_tensor_slices((self.X_ph))
-        
-        train_dataset = train_dataset.shuffle(buffer_size=1000)
-        train_dataset = train_dataset.repeat()
-        train_dataset = train_dataset.batch(self.batch_size)
-
-        test_dataset = test_dataset.shuffle(buffer_size=1000)
-        test_dataset = test_dataset.repeat()
-        test_dataset = test_dataset.batch(self.batch_size)
-        
-        self.iterator = tf.data.Iterator.from_structure(train_dataset.output_types,train_dataset.output_shapes)
-        
-        self.train_initializer = self.iterator.make_initializer(train_dataset)
-        self.test_initializer = self.iterator.make_initializer(test_dataset)
-    
-    def setup_training(self,sess):
-        if self.has_labels:
-            sess.run(self.train_initializer,{ self.X_ph:self.X_train, self.y_ph:self.y_train })
-        else:
-            sess.run(self.train_initializer,{ self.X_ph:self.X_train })
-
-    def setup_testing(self,sess):
-        if self.has_labels:
-            sess.run(self.test_initializer,{ self.X_ph:self.X_test, self.y_ph:self.y_test })
-        else:
-            sess.run(self.test_initializer,{ self.X_ph:self.X_test })
-
-    def load_batch(self):
-        """Load a batch of training/testing instances.
+    def load_train_batch(self):
+        """Load a batch of training instances.
         """
-        if self.has_labels:
-            return self.iterator.get_next()
-        else:
-            return self.iterator.get_next(), None
+        return _random_batch(self.batch_size,self.X_train,self.y_train)
+    
+    def load_test_batch(self):
+        """Load a batch of testing instances.
+        """
+        return _random_batch(self.batch_size,self.X_test,self.y_test)
 
