@@ -160,23 +160,17 @@ class PixelCNN(object):
     def build_test_graph(self):
         opt = self.opt
 
-        image_ph = tf.placeholder('float32',(opt.batch_size,opt.image_height,opt.image_width,1))
-        if opt.num_classes > 1:
-            label_ph = tf.placeholder('float32',(opt.batch_size,opt.num_classes))
-        else:
-            label_ph = None
+        image_ph = tf.placeholder('float32',(None,opt.image_height,opt.image_width,1))
+        label_ph = tf.placeholder('float32',(None,opt.num_classes))
 
         with tf.name_scope("prediction"):
             pred = pixel_cnn(image_ph,opt.num_block_cnn_filters,opt.num_block_cnn_layers,h=label_ph)
 
         self.image_ph = image_ph
         self.label_ph = label_ph
-        self.pred = pred
+        self.pred = tf.nn.sigmoid(pred)
 
     def predict(self, image, label, sess):
-        if self.label_ph is not None:
-            results = sess.run(self.pred, feed_dict={self.image_ph:image,self.label_ph:label})
-        else:
-            results = sess.run(self.pred, feed_dict={self.image_ph:image})
+        results = sess.run(self.pred, feed_dict={self.image_ph:image,self.label_ph:label})
         return results
 
