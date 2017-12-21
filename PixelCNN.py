@@ -126,7 +126,7 @@ class PixelCNN(object):
                     X_test, y_test = self.loader.load_test_batch()
                     test_feed_dict = {
                         self.loader.X_ph: X_test,
-                        self.loader_y_ph: y_test
+                        self.loader.y_ph: y_test
                     }
                     test_results = sess.run(test_fetches,feed_dict=test_feed_dict)
 
