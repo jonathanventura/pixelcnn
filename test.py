@@ -11,7 +11,7 @@ from skimage.io import imsave
 
 flags = tf.app.flags
 flags.DEFINE_string("dataset_name", "mnist", "Dataset name (mnist)")
-flags.DEFINE_string("checkpoint_file", "./checkpoints/", "Path to checkpoint file")
+flags.DEFINE_string("checkpoint_file", "./checkpoints/model.latest", "Path to checkpoint file")
 flags.DEFINE_integer("num_block_cnn_filters", 16, "Number of channels in BlockCNN filters")
 flags.DEFINE_integer("num_block_cnn_layers", 7, "Number of BlockCNN layers")
 FLAGS = flags.FLAGS
@@ -25,6 +25,19 @@ def generate_images(model,image_height,image_width,labels,sess):
     ### sequentially generate images
     images = np.zeros((len(labels),image_height,image_width,1),dtype='float32')
     for y in trange(image_height,desc='generating images'):
+        for x in range(image_width):
+            probs = model.predict(images,labels,sess)
+            
+            # binomial sampling
+            images[:,y,x] = binomial(probs[:,y,x])
+    return images
+
+def autocomplete_images(model,images_in,labels,sess,ystart=14):
+    ### sequentially generate lower part of images
+    images = np.copy(images_in)
+    image_height = images.shape[1]
+    image_width = images.shape[2]
+    for y in trange(ystart,image_height,desc='generating images'):
         for x in range(image_width):
             probs = model.predict(images,labels,sess)
             
@@ -56,7 +69,14 @@ def main(_):
         labels = np.eye(FLAGS.num_classes,dtype='float32')
         images = generate_images(model,FLAGS.image_height,FLAGS.image_width,labels,sess)
         for i in range(len(images)):
-            imsave('output/%02d_image.png'%i,np.squeeze(images[i]*255.).astype('uint8'))
+            imsave('output/%02d_synt.png'%i,np.squeeze(images[i]*255.).astype('uint8'))
+
+        labels = loader.y_test[0:10]
+        images = loader.X_test[0:10]
+        auto_images = autocomplete_images(model,images,labels,sess)
+        for i in range(len(images)):
+            imsave('output/%02d_true.png'%i,np.squeeze(images[i]*255.).astype('uint8'))
+            imsave('output/%02d_pred.png'%i,np.squeeze(auto_images[i]*255.).astype('uint8'))
 
 if __name__ == '__main__':
     tf.app.run()
