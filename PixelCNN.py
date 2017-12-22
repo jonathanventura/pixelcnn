@@ -24,10 +24,16 @@ class PixelCNN(object):
             output_dim = images.get_shape()[3].value
 
         with tf.name_scope("prediction"):
-            pred = pixel_cnn(images,num_filters=opt.num_block_cnn_filters,num_layers=opt.num_block_cnn_layers,h=labels)
+            logits = pixel_cnn(images,num_filters=opt.num_block_cnn_filters,num_layers=opt.num_block_cnn_layers,h=labels)
+            probs = tf.nn.sigmoid(logits)
 
         with tf.name_scope("compute_loss"):
-            per_image_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=images, logits=pred)
+            if loader.dist == 'bernoulli':
+                per_image_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=images, logits=logits)
+            elif loader.dist == 'gaussian':
+                per_image_loss = tf.square(images-probs)
+            else:
+                raise ValueError('unknown loss type: %s'%opt.loss_type)
             total_loss = tf.reduce_mean(tf.reduce_sum(tf.layers.flatten(per_image_loss),axis=-1))
 
         with tf.name_scope("train_op"):
@@ -42,7 +48,8 @@ class PixelCNN(object):
 
         # Collect tensors that are useful later (e.g. tf summary)
         self.loader = loader
-        self.pred = tf.nn.sigmoid(pred)
+        self.logits = logits
+        self.probs = probs
         self.total_loss = total_loss
         self.images = images
         self.labels = labels
@@ -51,13 +58,13 @@ class PixelCNN(object):
         opt = self.opt
         
         tf.summary.scalar('loss', self.total_loss, collections=['train'], family='train')
-        tf.summary.image('image', self.images, max_outputs=5, collections=['train'], family='train')
-        tf.summary.image('pred', tf.clip_by_value(self.pred,0.,1.), max_outputs=5,collections=['train'], family='train')
+        tf.summary.image('image', self.images, collections=['train'], family='train')
+        tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['train'], family='train')
         self.train_summary_op = tf.summary.merge_all('train')
 
         tf.summary.scalar('loss', self.total_loss, collections=['test'], family='test')
-        tf.summary.image('image', self.images, max_outputs=5, collections=['test'], family='test')
-        tf.summary.image('pred', tf.clip_by_value(self.pred,0.,1.), max_outputs=5, collections=['test'], family='test')
+        tf.summary.image('image', self.images, collections=['test'], family='test')
+        tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['test'], family='test')
         self.test_summary_op = tf.summary.merge_all('test')
 
     def train(self, opt):
@@ -102,9 +109,10 @@ class PixelCNN(object):
                 
                 X_train, y_train = self.loader.load_train_batch()
                 feed_dict = {
-                    self.loader.X_ph: X_train,
-                    self.loader.y_ph: y_train
+                    self.loader.X_ph: X_train
                 }
+                if y_train is not None:
+                    feed_dict[self.loader.y_ph] = y_train
 
                 if step == 2:
                     options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -125,9 +133,10 @@ class PixelCNN(object):
                     }
                     X_test, y_test = self.loader.load_test_batch()
                     test_feed_dict = {
-                        self.loader.X_ph: X_test,
-                        self.loader.y_ph: y_test
+                        self.loader.X_ph: X_test
                     }
+                    if y_test is not None:
+                        test_feed_dict[self.loader.y_ph] = y_test
                     test_results = sess.run(test_fetches,feed_dict=test_feed_dict)
 
                     sv.summary_computed(sess,results["summary"], gs)
@@ -161,16 +170,24 @@ class PixelCNN(object):
         opt = self.opt
 
         image_ph = tf.placeholder('float32',(None,opt.image_height,opt.image_width,1))
-        label_ph = tf.placeholder('float32',(None,opt.num_classes))
+        if opt.num_classes>1:
+            label_ph = tf.placeholder('float32',(None,opt.num_classes))
+        else:
+            label_ph = None
 
         with tf.name_scope("prediction"):
-            pred = pixel_cnn(image_ph,opt.num_block_cnn_filters,opt.num_block_cnn_layers,h=label_ph)
+            logits = pixel_cnn(image_ph,opt.num_block_cnn_filters,opt.num_block_cnn_layers,h=label_ph)
+            probs = tf.nn.sigmoid(logits)
 
         self.image_ph = image_ph
         self.label_ph = label_ph
-        self.pred = tf.nn.sigmoid(pred)
+        self.logits = logits
+        self.probs = probs
 
     def predict(self, image, label, sess):
-        results = sess.run(self.pred, feed_dict={self.image_ph:image,self.label_ph:label})
+        if self.label_ph is not None:
+            results = sess.run(self.probs, feed_dict={self.image_ph:image,self.label_ph:label})
+        else:
+            results = sess.run(self.probs, feed_dict={self.image_ph:image})
         return results
 

@@ -3,11 +3,15 @@ import os
 import random
 import tensorflow as tf
 import numpy as np
+from scipy.io import loadmat
 
 def _random_batch(batch_size,X_in,y_in):
     inds = np.random.randint(len(X_in),size=batch_size)
     X = X_in[inds]
-    y = y_in[inds]
+    if y_in is not None:
+        y = y_in[inds]
+    else:
+        y = None
     return X, y
 
 class DataLoader(object):
@@ -42,6 +46,25 @@ class DataLoader(object):
             self.y_test = y_test
             self.X_ph = tf.placeholder('float32',(None,28,28,1))
             self.y_ph = tf.placeholder('float32',(None,10))
+            
+            self.dist = 'bernoulli'
+        elif dataset_name == 'frey':
+            path = tf.keras.utils.get_file('frey_rawface.mat','https://cs.nyu.edu/~roweis/data/frey_rawface.mat')
+            data = np.transpose(loadmat(path)['ff'])
+            X_train = np.reshape(data,(-1,28,20,1))
+
+            X_train = X_train.astype('float32')/255.
+
+            y_train = np.copy(X_train)
+
+            self.X_train = X_train
+            self.y_train = None
+            self.X_test = X_train
+            self.y_test = None
+            self.X_ph = tf.placeholder('float32',(None,28,20,1))
+            self.y_ph = None
+            
+            self.dist = 'gaussian'
         else:
             raise ValueError('unknown dataset name %s'%dataset_name)
 
