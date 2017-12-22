@@ -14,7 +14,7 @@ def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     # convolution for vertical stack
     vinput_padded = tf.pad(vinput, [[0,0],[ceilk,0],[floork,floork],[0,0]])
     vconv = tf.layers.conv2d(vinput_padded, 2*num_filters, [ceilk,k], name='vconv_%d'%layer_index,
-        padding='valid', activation=None, use_bias=False)
+        padding='valid', activation=None)
     vconv = vconv[:,:-1,:,:]
     
     # bias for vertical stack
@@ -23,9 +23,7 @@ def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
             activation=None)
         vbias = tf.expand_dims(vbias,axis=1)
         vbias = tf.expand_dims(vbias,axis=1)
-    else:
-        vbias = tf.get_variable('vbias_%d'%layer_index, [1,1,2*num_filters], tf.float32, tf.zeros_initializer)
-    vconv = vconv + vbias
+        vconv += vbias
     
     # apply separate activations
     vconv_tanh = tf.nn.tanh(vconv[:,:,:,:num_filters])
@@ -37,7 +35,7 @@ def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     # convolution for horizontal stack
     hinput_padded = tf.pad(hinput, [[0,0],[0,0],[ceilk,0],[0,0]])
     hconv = tf.layers.conv2d(hinput_padded, 2*num_filters, [1,ceilk], name='hconv_%d'%layer_index,
-        padding='valid', activation=None, use_bias=False)
+        padding='valid', activation=None)
     if layer_index==0:
         hconv = hconv[:,:,:-1,:]
     else:
@@ -49,9 +47,7 @@ def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
             activation=None)
         hbias = tf.expand_dims(hbias,axis=1)
         hbias = tf.expand_dims(hbias,axis=1)
-    else:
-        hbias = tf.get_variable('hbias_%d'%layer_index, [1,1,2*num_filters], tf.float32, tf.zeros_initializer)
-    hconv = hconv + hbias
+        hconv += hbias
     
     # 1x1 transitional convolution for vstack
     vconv1 = tf.layers.conv2d(vconv, 2*num_filters, 1, name='vconv1_%d'%layer_index,
