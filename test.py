@@ -50,9 +50,9 @@ def autocomplete_images(model,images_in,labels,dist,sess,ystart=14):
             probs = model.predict(images,labels,sess)
             
             if dist == 'bernoulli':
-                images[:,y,x] = bernoulli(probs[:,y,x])
+                images[:,y,x] = np.round(probs[:,y,x])
             elif dist == 'gaussian':
-                images[:,y,x] = gaussian(probs[:,y,x])
+                images[:,y,x] = probs[:,y,x]
     return images
 
 def main(_):
