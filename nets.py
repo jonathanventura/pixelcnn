@@ -5,7 +5,7 @@ from math import floor, ceil
 
 def _get_bias(h,num_filters,name):
     bias = tf.layers.dense(h, 2*num_filters, name=name,
-        activation=None)
+        activation=None, use_bias=False)
     bias = tf.expand_dims(bias,axis=1)
     bias = tf.expand_dims(bias,axis=1)
     return bias
@@ -27,7 +27,7 @@ def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     floork = int(floor(filter_size/2))
     ceilk = int(ceil(filter_size/2))
     
-    # convolution for vertical stack
+    # kxk convolution for vertical stack
     vinput_padded = tf.pad(vinput, [[0,0],[ceilk,0],[floork,floork],[0,0]])
     vconv = tf.layers.conv2d(vinput_padded, 2*num_filters, [ceilk,k], name='vconv_%d'%layer_index,
         padding='valid', activation=None)
@@ -37,7 +37,7 @@ def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     if h is not None:
         vconv += _get_bias(h,num_filters,'vbias_%d'%layer_index)
 
-    # convolution for horizontal stack
+    # kx1 convolution for horizontal stack
     hinput_padded = tf.pad(hinput, [[0,0],[0,0],[ceilk,0],[0,0]])
     hconv = tf.layers.conv2d(hinput_padded, 2*num_filters, [1,ceilk], name='hconv_%d'%layer_index,
         padding='valid', activation=None)
