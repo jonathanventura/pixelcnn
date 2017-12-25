@@ -3,8 +3,24 @@ import tensorflow as tf
 import numpy as np
 from math import floor, ceil
 
-def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
+def _get_bias(h,num_filters,name):
+    bias = tf.layers.dense(h, 2*num_filters, name=name,
+        activation=None)
+    bias = tf.expand_dims(bias,axis=1)
+    bias = tf.expand_dims(bias,axis=1)
+    return bias
+
+def _apply_activation(x,num_filters):
+    # apply separate activations
+    x_tanh = tf.nn.tanh(x[:,:,:,:num_filters])
+    x_sigmoid = tf.nn.sigmoid(x[:,:,:,num_filters:])
+    
+    # combine activations
+    return x_tanh * x_sigmoid
+
+def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     """Gated activation PixelCNN layer
+       Paper reference: https://arxiv.org/pdf/1606.05328.pdf
        Code reference: https://github.com/dritchie/pixelCNN/blob/master/pixelCNN.lua
     """
     k = filter_size
@@ -19,19 +35,8 @@ def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     
     # bias for vertical stack
     if h is not None:
-        vbias = tf.layers.dense(h, 2*num_filters, name='vbias_%d'%layer_index,
-            activation=None)
-        vbias = tf.expand_dims(vbias,axis=1)
-        vbias = tf.expand_dims(vbias,axis=1)
-        vconv += vbias
-    
-    # apply separate activations
-    vconv_tanh = tf.nn.tanh(vconv[:,:,:,:num_filters])
-    vconv_sigmoid = tf.nn.sigmoid(vconv[:,:,:,num_filters:])
-    
-    # combine activations
-    vconv = vconv_tanh * vconv_sigmoid
-    
+        vconv += _get_bias(h,num_filters,'vbias_%d'%layer_index)
+
     # convolution for horizontal stack
     hinput_padded = tf.pad(hinput, [[0,0],[0,0],[ceilk,0],[0,0]])
     hconv = tf.layers.conv2d(hinput_padded, 2*num_filters, [1,ceilk], name='hconv_%d'%layer_index,
@@ -43,11 +48,7 @@ def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
 
     # bias for horizontal stack
     if h is not None:
-        hbias = tf.layers.dense(h, 2*num_filters, name='hbias_%d'%layer_index,
-            activation=None)
-        hbias = tf.expand_dims(hbias,axis=1)
-        hbias = tf.expand_dims(hbias,axis=1)
-        hconv += hbias
+        hconv += _get_bias(h,num_filters,'hbias_%d'%layer_index)
     
     # 1x1 transitional convolution for vstack
     vconv1 = tf.layers.conv2d(vconv, 2*num_filters, 1, name='vconv1_%d'%layer_index,
@@ -56,17 +57,15 @@ def pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     # add vstack to hstack
     hconv = hconv + vconv1
     
-    # apply separate activations
-    hconv_tanh = tf.nn.tanh(hconv[:,:,:,:num_filters])
-    hconv_sigmoid = tf.nn.sigmoid(hconv[:,:,:,num_filters:])
-    
-    # combine activations
-    hconv = hconv_tanh * hconv_sigmoid
-    
+    # apply activations
+    vconv = _apply_activation(vconv,num_filters)
+    hconv = _apply_activation(hconv,num_filters)
+ 
     # residual connection in hstack
-    hconv1 = tf.layers.conv2d(hconv, num_filters, 1, name='hconv1_%d'%layer_index,
-        padding='valid', activation=None)
-    hconv = hconv + hconv1
+    if layer_index > 0:
+        hconv1 = tf.layers.conv2d(hconv, num_filters, 1, name='hconv1_%d'%layer_index,
+            padding='valid', activation=None)
+        hconv = hinput + hconv1
     
     return vconv, hconv
 
@@ -84,11 +83,11 @@ def pixel_cnn(inputs,num_filters,num_layers,h=None):
         hstack = inputs
         
         # first layer: masked 7x7
-        vstack, hstack = pixel_cnn_layer(vstack,hstack,7,num_filters,0,h=h)
+        vstack, hstack = _pixel_cnn_layer(vstack,hstack,7,num_filters,0,h=h)
 
         # next layers: masked 3x3
         for i in range(num_layers):
-            vstack, hstack = pixel_cnn_layer(vstack,hstack,3,num_filters,i+1,h=h)
+            vstack, hstack = _pixel_cnn_layer(vstack,hstack,3,num_filters,i+1,h=h)
         
         # final layers
         x = tf.nn.relu(hstack)
