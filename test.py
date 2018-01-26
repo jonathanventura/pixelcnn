@@ -10,10 +10,11 @@ from tqdm import trange
 from skimage.io import imsave
 
 flags = tf.app.flags
-flags.DEFINE_string("dataset_name", "mnist", "Dataset name (mnist,frey)")
+flags.DEFINE_string("dataset_name", "mnist", "Dataset name (mnist,frey,cifar10)")
 flags.DEFINE_string("checkpoint_file", "./checkpoints/model.latest", "Path to checkpoint file")
-flags.DEFINE_integer("num_block_cnn_filters", 16, "Number of channels in BlockCNN filters")
-flags.DEFINE_integer("num_block_cnn_layers", 7, "Number of BlockCNN layers")
+flags.DEFINE_integer("num_filters", 16, "Number of channels in PixelCNN filters")
+flags.DEFINE_integer("num_layers", 7, "Number of PixelCNN layers")
+flags.DEFINE_integer("num_logistic_mix", 10, "Number of models in logistic mixture model")
 FLAGS = flags.FLAGS
 
 def bernoulli(probs):
@@ -27,9 +28,9 @@ def gaussian(means):
     x = means + np.random.standard_normal(means.shape)*0.01
     return np.clip(x,0,1)
 
-def generate_images(model,image_height,image_width,labels,dist,sess):
+def generate_images(model,image_height,image_width,image_dim,labels,dist,sess):
     ### sequentially generate images
-    images = np.zeros((len(labels),image_height,image_width,1),dtype='float32')
+    images = np.zeros((len(labels),image_height,image_width,image_dim),dtype='float32')
     for y in trange(image_height,desc='generating images'):
         for x in range(image_width):
             probs = model.predict(images,labels,sess)
@@ -38,6 +39,8 @@ def generate_images(model,image_height,image_width,labels,dist,sess):
                 images[:,y,x] = bernoulli(probs[:,y,x])
             elif dist == 'gaussian':
                 images[:,y,x] = gaussian(probs[:,y,x])
+            elif dist == 'logistic':
+                images[:,y,x] = probs[:,y,x]
     return images
 
 def autocomplete_images(model,images_in,labels,dist,sess,ystart=14):
@@ -53,6 +56,8 @@ def autocomplete_images(model,images_in,labels,dist,sess,ystart=14):
                 images[:,y,x] = np.round(probs[:,y,x])
             elif dist == 'gaussian':
                 images[:,y,x] = probs[:,y,x]
+            elif dist == 'logistic':
+                images[:,y,x] = probs[:,y,x]
     return images
 
 def main(_):
@@ -60,10 +65,14 @@ def main(_):
     loader = DataLoader(dataset_name=FLAGS.dataset_name)
     FLAGS.image_height = loader.X_train.shape[1]
     FLAGS.image_width = loader.X_train.shape[2]
+    FLAGS.image_dim = loader.X_train.shape[3]
+    FLAGS.dist = loader.dist
     if loader.y_train is not None:
         FLAGS.num_classes = loader.y_train.shape[1]
+        FLAGS.batch_size = FLAGS.num_classes
     else:
         FLAGS.num_classes = 1
+        FLAGS.batch_size = 10
 
     # setup model for testing
     model = PixelCNN()
@@ -71,6 +80,11 @@ def main(_):
 
     if not os.path.exists('output'):
         os.makedirs('output')
+
+    if FLAGS.dist == 'bernoulli' or FLAGS.dist == 'gaussian':
+        convert = lambda x: x*255.
+    elif FLAGS.dist == 'logistic':
+        convert = lambda x: ((x+1.)*0.5)*255.
     
     # load weights from file
     saver = tf.train.Saver([var for var in tf.trainable_variables()])
@@ -83,9 +97,9 @@ def main(_):
             labels = np.eye(FLAGS.num_classes,dtype='float32')
         else:
             labels = np.zeros((10,1),dtype='float32')
-        images = generate_images(model,FLAGS.image_height,FLAGS.image_width,labels,loader.dist,sess)
+        images = generate_images(model,FLAGS.image_height,FLAGS.image_width,FLAGS.image_dim,labels,loader.dist,sess)
         for i in range(len(images)):
-            imsave('output/%02d_synt.png'%i,np.squeeze(images[i]*255.).astype('uint8'))
+            imsave('output/%02d_synt.png'%i,np.squeeze(convert(images[i])).astype('uint8'))
 
         if FLAGS.num_classes > 1:
             labels = loader.y_test[0:10]
@@ -94,8 +108,8 @@ def main(_):
         images = loader.X_test[0:10]
         auto_images = autocomplete_images(model,images,labels,loader.dist,sess)
         for i in range(len(images)):
-            imsave('output/%02d_true.png'%i,np.squeeze(images[i]*255.).astype('uint8'))
-            imsave('output/%02d_pred.png'%i,np.squeeze(auto_images[i]*255.).astype('uint8'))
+            imsave('output/%02d_true.png'%i,np.squeeze(convert(images[i])).astype('uint8'))
+            imsave('output/%02d_pred.png'%i,np.squeeze(convert(auto_images[i])).astype('uint8'))
 
 if __name__ == '__main__':
     tf.app.run()
