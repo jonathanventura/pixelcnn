@@ -7,14 +7,15 @@ from PixelCNN import PixelCNN
 import os
 
 flags = tf.app.flags
-flags.DEFINE_string("dataset_name", "mnist", "Dataset name (mnist)")
+flags.DEFINE_string("dataset_name", "mnist", "Dataset name (mnist,frey,cifar10)")
 flags.DEFINE_string("checkpoint_dir", "./checkpoints/", "Directory name to save the checkpoints")
 flags.DEFINE_string("init_checkpoint_file", None, "Specific checkpoint file to initialize from")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate of for adam")
 flags.DEFINE_float("beta1", 0.9, "Momentum term of adam")
 flags.DEFINE_integer("batch_size", 128, "The size of a sample batch")
-flags.DEFINE_integer("num_block_cnn_filters", 16, "Number of channels in BlockCNN filters")
-flags.DEFINE_integer("num_block_cnn_layers", 7, "Number of BlockCNN layers")
+flags.DEFINE_integer("num_filters", 16, "Number of channels in PixelCNN filters")
+flags.DEFINE_integer("num_layers", 7, "Number of PixelCNN layers")
+flags.DEFINE_integer("num_logistic_mix", 10, "Number of models in logistic mixture model")
 flags.DEFINE_integer("max_steps", 200000, "Maximum number of training iterations")
 flags.DEFINE_integer("summary_freq", 100, "Logging every log_freq iterations")
 flags.DEFINE_integer("save_latest_freq", 1000, \

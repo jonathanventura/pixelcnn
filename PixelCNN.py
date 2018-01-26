@@ -7,6 +7,7 @@ import tensorflow as tf
 from tensorflow.python.client import timeline
 from data_loader import DataLoader
 from nets import *
+from logistic import *
 
 class PixelCNN(object):
     def __init__(self):
@@ -21,20 +22,30 @@ class PixelCNN(object):
         with tf.name_scope("data_loading"):
             images = loader.X_ph
             labels = loader.y_ph
-            output_dim = images.get_shape()[3].value
+            if loader.dist == 'bernoulli' or loader.dist == 'gaussian':
+                output_dim = 1
+            elif loader.dist == 'logistic':
+                output_dim = 10*opt.num_logistic_mix
+            else:
+                raise ValueError('unknown output distribution: %s'%loader.dist)
 
         with tf.name_scope("prediction"):
-            logits = pixel_cnn(images,num_filters=opt.num_block_cnn_filters,num_layers=opt.num_block_cnn_layers,h=labels)
-            probs = tf.nn.sigmoid(logits)
+            pred = pixel_cnn(images,num_filters=opt.num_filters,num_layers=opt.num_layers,output_dim=output_dim,h=labels)
+            if loader.dist == 'bernoulli' or loader.dist == 'gaussian':
+                probs = tf.nn.sigmoid(pred)
 
         with tf.name_scope("compute_loss"):
             if loader.dist == 'bernoulli':
-                per_image_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=images, logits=logits)
+                per_image_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=images, logits=pred)
+                total_loss = tf.reduce_mean(tf.reduce_sum(tf.layers.flatten(per_image_loss),axis=-1))
             elif loader.dist == 'gaussian':
                 per_image_loss = tf.square(images-probs)
+                total_loss = tf.reduce_mean(tf.reduce_sum(tf.layers.flatten(per_image_loss),axis=-1))
+            elif loader.dist == 'logistic':
+                per_image_loss = discretized_mix_logistic_loss(images,pred,sum_all=False)
+                total_loss = tf.reduce_mean(per_image_loss)
             else:
-                raise ValueError('unknown loss type: %s'%opt.loss_type)
-            total_loss = tf.reduce_mean(tf.reduce_sum(tf.layers.flatten(per_image_loss),axis=-1))
+                raise ValueError('unknown output distribution: %s'%loader.dist)
 
         with tf.name_scope("train_op"):
             train_vars = [var for var in tf.trainable_variables()]
@@ -48,8 +59,8 @@ class PixelCNN(object):
 
         # Collect tensors that are useful later (e.g. tf summary)
         self.loader = loader
-        self.logits = logits
-        self.probs = probs
+        self.pred = pred
+        #self.probs = probs
         self.total_loss = total_loss
         self.images = images
         self.labels = labels
@@ -59,12 +70,12 @@ class PixelCNN(object):
         
         tf.summary.scalar('loss', self.total_loss, collections=['train'], family='train')
         tf.summary.image('image', self.images, collections=['train'], family='train')
-        tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['train'], family='train')
+        #tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['train'], family='train')
         self.train_summary_op = tf.summary.merge_all('train')
 
         tf.summary.scalar('loss', self.total_loss, collections=['test'], family='test')
         tf.summary.image('image', self.images, collections=['test'], family='test')
-        tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['test'], family='test')
+        #tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['test'], family='test')
         self.test_summary_op = tf.summary.merge_all('test')
 
     def train(self, opt):
@@ -114,7 +125,7 @@ class PixelCNN(object):
                 if y_train is not None:
                     feed_dict[self.loader.y_ph] = y_train
 
-                if step == 2:
+                if False: #step == 2:
                     options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                     run_metadata = tf.RunMetadata()
                     results = sess.run(fetches, feed_dict=feed_dict, options=options, run_metadata=run_metadata)
@@ -176,7 +187,7 @@ class PixelCNN(object):
             label_ph = None
 
         with tf.name_scope("prediction"):
-            logits = pixel_cnn(image_ph,opt.num_block_cnn_filters,opt.num_block_cnn_layers,h=label_ph)
+            logits = pixel_cnn(image_ph,opt.num_filters,opt.num_layers,h=label_ph)
             probs = tf.nn.sigmoid(logits)
 
         self.image_ph = image_ph

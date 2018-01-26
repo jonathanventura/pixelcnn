@@ -69,7 +69,7 @@ def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index,h=None):
     
     return vconv, hconv
 
-def pixel_cnn(inputs,num_filters,num_layers,h=None):
+def pixel_cnn(inputs,num_filters,num_layers,output_dim,h=None):
     """Builds PixelCNN graph.
     Args:
         inputs: input tensor (B,H,W,C)
@@ -77,7 +77,6 @@ def pixel_cnn(inputs,num_filters,num_layers,h=None):
     Returns:
         Predicted tensor
     """
-    output_dim = inputs.get_shape()[3]
     with tf.variable_scope('pixel_cnn') as sc:
         vstack = inputs
         hstack = inputs
