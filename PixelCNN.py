@@ -8,6 +8,7 @@ from tensorflow.python.client import timeline
 from data_loader import DataLoader
 from nets import *
 from logistic import *
+from pixel_cnn_pp.model import model_spec
 
 class PixelCNN(object):
     def __init__(self):
@@ -21,7 +22,9 @@ class PixelCNN(object):
         
         with tf.name_scope("data_loading"):
             images = loader.X_ph
+            images = tf.reshape(images,(opt.batch_size,) + loader.X_train.shape[1:])
             labels = loader.y_ph
+            labels = tf.reshape(labels,(opt.batch_size,) + loader.y_train.shape[1:])
             if loader.dist == 'bernoulli' or loader.dist == 'gaussian':
                 output_dim = 1
             elif loader.dist == 'logistic':
@@ -30,7 +33,8 @@ class PixelCNN(object):
                 raise ValueError('unknown output distribution: %s'%loader.dist)
 
         with tf.name_scope("prediction"):
-            pred = pixel_cnn(images,num_filters=opt.num_filters,num_layers=opt.num_layers,output_dim=output_dim,h=labels)
+            #pred = pixel_cnn(images,num_filters=opt.num_filters,num_layers=opt.num_layers,output_dim=output_dim,h=labels)
+            pred = model_spec(images,nr_filters=opt.num_filters,output_dim=output_dim,h=labels)
             if loader.dist == 'bernoulli' or loader.dist == 'gaussian':
                 probs = tf.nn.sigmoid(pred)
 
@@ -60,7 +64,7 @@ class PixelCNN(object):
         # Collect tensors that are useful later (e.g. tf summary)
         self.loader = loader
         self.pred = pred
-        #self.probs = probs
+        self.probs = probs
         self.total_loss = total_loss
         self.images = images
         self.labels = labels
@@ -70,12 +74,12 @@ class PixelCNN(object):
         
         tf.summary.scalar('loss', self.total_loss, collections=['train'], family='train')
         tf.summary.image('image', self.images, collections=['train'], family='train')
-        #tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['train'], family='train')
+        tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['train'], family='train')
         self.train_summary_op = tf.summary.merge_all('train')
 
         tf.summary.scalar('loss', self.total_loss, collections=['test'], family='test')
         tf.summary.image('image', self.images, collections=['test'], family='test')
-        #tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['test'], family='test')
+        tf.summary.image('probs', tf.clip_by_value(self.probs,0.,1.), collections=['test'], family='test')
         self.test_summary_op = tf.summary.merge_all('test')
 
     def train(self, opt):
