@@ -35,7 +35,7 @@ class PixelCNN(object):
 
         with tf.name_scope("prediction"):
             #pred = pixel_cnn(images,num_filters=opt.num_filters,num_layers=opt.num_layers,output_dim=output_dim,h=labels)
-            pred = model_spec(images,nr_filters=opt.num_filters,output_dim=output_dim,h=labels)
+            pred = model_spec(images,nr_resnet=opt.num_layers,nr_filters=opt.num_filters,output_dim=output_dim,h=labels)
             if loader.dist == 'bernoulli' or loader.dist == 'gaussian':
                 probs = tf.nn.sigmoid(pred)
 
@@ -200,7 +200,7 @@ class PixelCNN(object):
 
         with tf.name_scope("prediction"):
             #pred = pixel_cnn(image_ph,opt.num_filters,opt.num_layers,output_dim,h=label_ph)
-            pred = model_spec(image_ph,nr_filters=opt.num_filters,output_dim=output_dim,h=label_ph)
+            pred = model_spec(image_ph,nr_resnet=opt.num_layers,nr_filters=opt.num_filters,output_dim=output_dim,h=label_ph)
             if opt.dist == 'bernoulli' or opt.dist == 'gaussian':
                 probs = tf.nn.sigmoid(pred)
             elif opt.dist == 'logistic':

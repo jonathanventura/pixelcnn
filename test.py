@@ -13,7 +13,7 @@ flags = tf.app.flags
 flags.DEFINE_string("dataset_name", "mnist", "Dataset name (mnist,frey,cifar10)")
 flags.DEFINE_string("checkpoint_file", "./checkpoints/model.latest", "Path to checkpoint file")
 flags.DEFINE_integer("num_filters", 16, "Number of channels in PixelCNN filters")
-flags.DEFINE_integer("num_layers", 7, "Number of PixelCNN layers")
+flags.DEFINE_integer("num_layers", 5, "Number of PixelCNN layers")
 flags.DEFINE_integer("num_logistic_mix", 10, "Number of models in logistic mixture model")
 FLAGS = flags.FLAGS
 
