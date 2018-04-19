@@ -24,7 +24,8 @@ class PixelCNN(object):
             images = loader.X_ph
             images = tf.reshape(images,(opt.batch_size,) + loader.X_train.shape[1:])
             labels = loader.y_ph
-            labels = tf.reshape(labels,(opt.batch_size,) + loader.y_train.shape[1:])
+            if labels is not None:
+                labels = tf.reshape(labels,(opt.batch_size,) + loader.y_train.shape[1:])
             if loader.dist == 'bernoulli' or loader.dist == 'gaussian':
                 output_dim = 1
             elif loader.dist == 'logistic':
@@ -198,7 +199,8 @@ class PixelCNN(object):
             raise ValueError('unknown output distribution: %s'%opt.dist)
 
         with tf.name_scope("prediction"):
-            pred = pixel_cnn(image_ph,opt.num_filters,opt.num_layers,output_dim,h=label_ph)
+            #pred = pixel_cnn(image_ph,opt.num_filters,opt.num_layers,output_dim,h=label_ph)
+            pred = model_spec(image_ph,nr_filters=opt.num_filters,output_dim=output_dim,h=label_ph)
             if opt.dist == 'bernoulli' or opt.dist == 'gaussian':
                 probs = tf.nn.sigmoid(pred)
             elif opt.dist == 'logistic':
