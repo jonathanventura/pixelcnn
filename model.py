@@ -30,3 +30,26 @@ class BinaryModel(ModelDesc):
         lr = tf.get_variable('learning_rate', initializer=1e-4, trainable=False)
         return tf.train.AdamOptimizer(lr)
 
+class RGBModel(ModelDesc):
+    def inputs(self):
+        return [tf.placeholder('uint8',(None,None,None,3))]
+
+    def build_graph(self, images):
+        # run RGB PixelCNN model
+        logits = rgb_pixelcnn(images/255.*2.-1.,num_filters=32,num_layers=7)
+
+        # compute loss
+        cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(labels=images, logits=logits)
+        per_image_loss = tf.reduce_sum(cross_entropy_loss,axis=[1,2])
+        loss = tf.reduce_mean(per_image_loss,name='loss')
+
+        # add summaries
+        summary.add_moving_summary(loss)
+        tf.summary.image('image',images)
+        tf.summary.image('prediction',tf.sigmoid(logits))
+
+        return loss
+
+    def optimizer(self):
+        lr = tf.get_variable('learning_rate', initializer=1e-4, trainable=False)
+        return tf.train.AdamOptimizer(lr)
