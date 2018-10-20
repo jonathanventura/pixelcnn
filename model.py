@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-#from pixelcnn import pixelcnn
+from pixelcnn import pixelcnn
 from gated_pixelcnn import gated_pixelcnn
 from tensorpack import *
 
@@ -12,7 +12,7 @@ class BinaryModel(ModelDesc):
         images = tf.expand_dims(images,axis=-1)
 
         # run PixelCNN model
-        logits = gated_pixelcnn(images*2.-1.,num_filters=32,num_layers=7,output_dim=1)
+        logits = pixelcnn(images*2.-1.,num_filters=32,num_layers=7,output_dim=1)
 
         # compute loss
         cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=images, logits=logits)
