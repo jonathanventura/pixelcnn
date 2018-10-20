@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from nets import *
+from pixelcnn import pixelcnn
 from tensorpack import *
 
 class BinaryModel(ModelDesc):
@@ -11,7 +11,7 @@ class BinaryModel(ModelDesc):
         images = tf.expand_dims(images,axis=-1)
 
         # run PixelCNN model
-        logits = pixel_cnn(images*2.-1.,num_filters=32,num_layers=7,output_dim=1)
+        logits = pixelcnn(images*2.-1.,num_filters=32,num_layers=7,output_dim=1)
 
         # compute loss
         cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=images, logits=logits)
@@ -26,6 +26,6 @@ class BinaryModel(ModelDesc):
         return loss
 
     def optimizer(self):
-        lr = tf.get_variable('learning_rate', initializer=1e-2, trainable=False)
+        lr = tf.get_variable('learning_rate', initializer=1e-4, trainable=False)
         return tf.train.AdamOptimizer(lr)
 

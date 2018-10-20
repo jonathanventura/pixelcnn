@@ -92,8 +92,8 @@ def pixel_cnn(inputs,num_filters,num_layers,output_dim,h=None):
         x = tf.nn.relu(hstack)
         x = tf.layers.conv2d(x, num_filters, 1, name='conv',
             padding='valid', activation=tf.nn.relu)
-        pred = tf.layers.conv2d(x, output_dim, 1, name='pred',
+        logits = tf.layers.conv2d(x, output_dim, 1, name='pred',
             padding='valid', activation=None)
         
-    return pred
+    return logits
 

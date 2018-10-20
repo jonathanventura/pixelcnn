@@ -3,15 +3,19 @@ import numpy as np
 from model import BinaryModel
 from tensorpack import *
 
-def get_data():
-    ds_train = dataset.Mnist('train',shuffle=True)
-    ds_train = SelectComponent(ds_train,[0])
-    ds_train = BatchData(ds_train,16,remainder=False)
+def binarize(x):
+    return x > np.random.sample(x.shape)
 
-    ds_test = dataset.Mnist('test',shuffle=False)
-    ds_test = SelectComponent(ds_test,[0])
-    ds_test = BatchData(ds_test,16,remainder=True)
-    
+def get_mnist(subset,batch_size,shuffle,remainder):
+    ds = dataset.Mnist(subset,shuffle=shuffle)
+    ds = SelectComponent(ds,[0])
+    ds = MapDataComponent(ds,binarize)
+    ds = BatchData(ds,batch_size,remainder=remainder)
+    return ds
+
+def get_data():
+    ds_train = get_mnist('train',16,True,False)
+    ds_test = get_mnist('test',16,False,True)
     return ds_train, ds_test
 
 ds_train, ds_test = get_data()
