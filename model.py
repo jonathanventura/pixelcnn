@@ -37,6 +37,7 @@ class RGBModel(ModelDesc):
     def build_graph(self, images):
         # run RGB PixelCNN model
         logits = rgb_pixelcnn(tf.cast(images,'float32')/255.*2.-1.,num_filters=32,num_layers=7,num_outputs=256)
+        pred = tf.cast(tf.argmax(logits,axis=-1),'uint8')
 
         # compute loss
         cross_entropy_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.cast(images,'int32'), logits=logits)
@@ -46,7 +47,7 @@ class RGBModel(ModelDesc):
         # add summaries
         summary.add_moving_summary(loss)
         tf.summary.image('image',images)
-        tf.summary.image('prediction',tf.sigmoid(logits))
+        tf.summary.image('prediction',pred)
 
         return loss
 
