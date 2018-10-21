@@ -7,9 +7,22 @@ def _conv(inputs, num_outputs, filter_size, name):
     # relu activation
     x = tf.nn.relu(inputs)
 
-    # convolution
-    x = tf.layers.conv2d(x, num_outputs, filter_size,
-            padding='valid', activation=None, name=name)
+    # get number of input channels
+    num_channels_in = inputs.get_shape().as_list()[-1]
+
+    # create filter weights
+    weights = tf.get_variable(name + '_weights',
+                              shape=filter_size + [num_channels_in,num_outputs],
+                              initializer=tf.glorot_uniform_initializer())
+    
+    # create filter bias
+    bias = tf.get_variable(name + '_bias',
+                           shape=(num_outputs,),
+                           initializer=tf.zeros_initializer())
+
+    # apply filter and bias
+    x = tf.nn.conv2d(x, weights, [1,1,1,1], 'VALID')
+    x = tf.nn.bias_add(x, bias)
 
     return x
 
@@ -33,14 +46,14 @@ def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index):
         hconv = hconv[:,:,1:,:]
 
     # 1x1 transitional convolution for vstack
-    vconv1 = _conv(vconv, num_filters, 1, 'vconv1_%d'%layer_index)
+    vconv1 = _conv(vconv, num_filters, [1,1], 'vconv1_%d'%layer_index)
     
     # add vstack to hstack
     hconv = hconv + vconv1
     
     # residual connection in hstack
     if layer_index > 0:
-        hconv1 = _conv(hconv, num_filters, 1, 'hconv1_%d'%layer_index)
+        hconv1 = _conv(hconv, num_filters, [1,1], 'hconv1_%d'%layer_index)
         hconv = hinput + hconv1
     
     return vconv, hconv
@@ -64,8 +77,8 @@ def pixelcnn(inputs,num_filters,num_layers,output_dim):
             vstack, hstack = _pixel_cnn_layer(vstack,hstack,3,num_filters,i+1)
         
         # final layers
-        x = _conv(hstack, num_filters, 1, name='conv1')
-        logits = _conv(x, output_dim, 1, name='logits')
+        x = _conv(hstack, num_filters, [1,1], name='conv1')
+        logits = _conv(x, output_dim, [1,1], name='logits')
         
     return logits
 
