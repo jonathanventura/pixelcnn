@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from model import BinaryModel
+from model import RGBModel
 from tensorpack import *
 
 def get_cifar10(subset,batch_size,shuffle,remainder):

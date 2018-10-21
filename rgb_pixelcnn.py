@@ -12,12 +12,12 @@ def _conv(inputs, num_outputs, filter_size, name):
 
     # create filter weights
     weights = tf.get_variable(name + '_weights',
-                              shape=filter_size + [num_channels_in,num_outputs],
+                              shape=filter_size + [num_channels_in,3*num_outputs],
                               initializer=tf.glorot_uniform_initializer())
     
     # create filter bias
     bias = tf.get_variable(name + '_bias',
-                           shape=(num_outputs,),
+                           shape=(3*num_outputs,),
                            initializer=tf.zeros_initializer())
 
     # apply filter and bias
@@ -26,7 +26,7 @@ def _conv(inputs, num_outputs, filter_size, name):
 
     return x
 
-def _hconv(inputs, num_outputs, filter_size, name, mask):
+def _masked_conv(inputs, num_outputs, filter_size, name, mask='B'):
     # relu activation
     x = tf.nn.relu(inputs)
 
@@ -58,7 +58,7 @@ def _hconv(inputs, num_outputs, filter_size, name, mask):
     weightsB = tf.get_variable(name + '_weightsB',
                               shape=weights_shape,
                               initializer=tf.glorot_uniform_initializer())
-    weights = tf.concatenate([weightsR*maskR,weightsG*maskG,weightsB*maskB],axis=-1)
+    weights = tf.concat([weightsR*maskR,weightsG*maskG,weightsB*maskB],axis=-1)
     
     # create filter bias
     bias = tf.get_variable(name + '_bias',
@@ -85,7 +85,7 @@ def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index):
     # kx1 convolution for horizontal stack
     hinput_padded = tf.pad(hinput, [[0,0],[0,0],[ceilk,0],[0,0]])
     mask = 'A' if layer_index == 0 else 'B'
-    hconv = _hconv(hinput_padded, num_filters, [1,ceilk], 'hconv_%d'%layer_index, mask)
+    hconv = _masked_conv(hinput_padded, num_filters, [1,ceilk], 'hconv_%d'%layer_index, mask)
     hconv = hconv[:,:,1:,:]
 
     # 1x1 transitional convolution for vstack
@@ -96,12 +96,12 @@ def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index):
     
     # residual connection in hstack
     if layer_index > 0:
-        hconv1 = _conv(hconv, num_filters, [1,1], 'hconv1_%d'%layer_index)
+        hconv1 = _masked_conv(hconv, num_filters, [1,1], 'hconv1_%d'%layer_index)
         hconv = hinput + hconv1
     
     return vconv, hconv
 
-def rgb_pixelcnn(inputs,num_filters,num_layers):
+def rgb_pixelcnn(inputs,num_filters,num_layers,num_outputs):
     """Builds RGB PixelCNN graph.
     Args:
         inputs: input tensor (B,H,W,C)
@@ -120,8 +120,10 @@ def rgb_pixelcnn(inputs,num_filters,num_layers):
             vstack, hstack = _pixel_cnn_layer(vstack,hstack,3,num_filters,i+1)
         
         # final layers
-        x = _conv(hstack, num_filters, [1,1], name='conv1')
-        logits = _conv(x, 1, [1,1], name='logits')
-        
+        x = _masked_conv(hstack, num_filters, [1,1], name='conv1')
+        logits = _masked_conv(x, num_outputs, [1,1], name='logits')
+        logitsR, logitsG, logitsB = tf.split(logits,3,axis=-1)
+        logits = tf.stack([logitsR, logitsG, logitsB],axis=3)
+
     return logits
 
