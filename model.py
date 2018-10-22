@@ -33,11 +33,12 @@ class BinaryModel(ModelDesc):
 
 class RGBModel(ModelDesc):
     def inputs(self):
-        return [tf.placeholder('uint8',(None,None,None,3))]
+        return [tf.placeholder('uint8',(None,None,None,3),name='image')]
 
     def build_graph(self, images):
         # run RGB PixelCNN model
         logits = rgb_pixelcnn(tf.cast(images,'float32')/255.*2.-1.,num_filters=32,num_layers=7,num_outputs=256)
+        probs = tf.nn.softmax(logits,name='probs')
         pred = tf.cast(tf.argmax(logits,axis=-1),'uint8')
 
         # compute loss
