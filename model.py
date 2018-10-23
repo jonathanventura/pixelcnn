@@ -23,7 +23,7 @@ class BinaryModel(ModelDesc):
         # add summaries
         summary.add_moving_summary(loss)
         tf.summary.image('image',images)
-        tf.summary.image('prediction',probs)
+        tf.summary.image('prediction',tf.expand_dims(probs,axis=-1))
 
         return loss
 
