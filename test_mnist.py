@@ -19,7 +19,7 @@ if __name__ == '__main__':
         model=BinaryModel(),
         input_names=['image'],
         output_names=['probs'],
-        session_init=SaverRestore(sys.argv[1])
+        session_init=SaverRestore(args.checkpoint)
     )
     predictor = OfflinePredictor(pred_config)
 
