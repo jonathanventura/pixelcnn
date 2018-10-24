@@ -54,5 +54,5 @@ if __name__ == '__main__':
 
     # generate output stack
     imout = stack_patches(images,5,5)
-    cv2.imwrite('stack.png',imout)
+    cv2.imwrite('stack.png',cv2.cvtColor(imout,cv2.COLOR_BGR2RGB))
 
