@@ -27,4 +27,4 @@ for y in trange(32):
             sample = sample_categorical(probs[:,y,x,c])
             images[:,y,x,c] = sample
 imout = stack_patches(images,2,5)
-cv2.imwrite('stack.png',imout)
+cv2.imwrite('stack.png',cv2.cvtColor(imout,cv2.COLOR_RGB2BGR))
