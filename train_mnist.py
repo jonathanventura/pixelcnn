@@ -15,7 +15,7 @@ def get_mnist(subset,batch_size,shuffle,remainder):
 
 def get_data():
     ds_train = get_mnist('train',16,True,False)
-    ds_test = get_mnist('test',16,False,True)
+    ds_test = get_mnist('test',16,False,False)
     return ds_train, ds_test
 
 if __name__ == '__main__':

@@ -1,4 +1,3 @@
-import argparse
 import tensorflow as tf
 import numpy as np
 from model import RGBModel
@@ -7,12 +6,27 @@ from tensorpack.utils.viz import stack_patches
 import sys
 import cv2
 from tqdm import trange
-from train_cifar10 import get_cifar10
+import glob
 
-def get_cifar10(subset,batch_size,shuffle,remainder):
-    ds = dataset.Cifar10(subset,shuffle=shuffle)
-    ds = SelectComponent(ds,[0])
+def get_celeba(subset,batch_size,shuffle,remainder):
+    all_files = sorted(glob.glob('img_align_celeba/*.jpg'))
+    inds = list(range(len(all_files)))
+    val_inds = inds[::10]
+    train_inds = [ind for ind in inds if ind not in val_inds]
+    if subset == 'train':
+        file_list = [all_files[ind] for ind in train_inds]
+    elif subset == 'val':
+        file_list = [all_files[ind] for ind in val_inds]
+    else:
+        raise ValueError('unknown subset %s'%subset)
+
+    ds = ImageFromFile(file_list, channel=3, shuffle=shuffle)
+    augs = [
+        imgaug.CenterCrop(160),
+        imgaug.Resize(32)]
+    ds = AugmentImageComponent(ds, augs)
     ds = BatchData(ds,batch_size,remainder=remainder)
+    #ds = PrefetchDataZMQ(ds, 3)
     return ds
 
 def sample_categorical(x):
@@ -37,7 +51,7 @@ for y in trange(32):
 imout = stack_patches(images,2,5)
 cv2.imwrite('generated.png',cv2.cvtColor(imout,cv2.COLOR_RGB2BGR))
 
-ds_val = get_cifar10('test',1,False,True)
+ds_val = get_celeba('val',1,False,True)
 ds_val.reset_state()
 i = 0
 for dp in ds_val:
@@ -54,4 +68,3 @@ for y in trange(16,32):
             images[:,y,x,c] = sample
 imout = stack_patches(images,2,5)
 cv2.imwrite('completed.png',cv2.cvtColor(imout,cv2.COLOR_RGB2BGR))
-

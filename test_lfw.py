@@ -1,4 +1,3 @@
-import argparse
 import tensorflow as tf
 import numpy as np
 from model import RGBModel
@@ -7,12 +6,15 @@ from tensorpack.utils.viz import stack_patches
 import sys
 import cv2
 from tqdm import trange
-from train_cifar10 import get_cifar10
 
-def get_cifar10(subset,batch_size,shuffle,remainder):
-    ds = dataset.Cifar10(subset,shuffle=shuffle)
-    ds = SelectComponent(ds,[0])
+def get_lfw(subset,batch_size,shuffle,remainder):
+    path = 'lfw_' + subset + '.h5'
+    ds = dataflow.HDF5Data(path,['data'],shuffle=shuffle)
+    augs = [
+        imgaug.Resize(32)]
+    ds = AugmentImageComponent(ds, augs)
     ds = BatchData(ds,batch_size,remainder=remainder)
+    #ds = PrefetchDataZMQ(ds, 3)
     return ds
 
 def sample_categorical(x):
@@ -37,7 +39,7 @@ for y in trange(32):
 imout = stack_patches(images,2,5)
 cv2.imwrite('generated.png',cv2.cvtColor(imout,cv2.COLOR_RGB2BGR))
 
-ds_val = get_cifar10('test',1,False,True)
+ds_val = get_lfw('val',1,False,True)
 ds_val.reset_state()
 i = 0
 for dp in ds_val:
@@ -54,4 +56,3 @@ for y in trange(16,32):
             images[:,y,x,c] = sample
 imout = stack_patches(images,2,5)
 cv2.imwrite('completed.png',cv2.cvtColor(imout,cv2.COLOR_RGB2BGR))
-

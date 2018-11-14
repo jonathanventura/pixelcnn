@@ -4,21 +4,10 @@ from model import RGBModel
 from tensorpack import *
 import glob
 
-def get_celeba(subset,batch_size,shuffle,remainder):
-    all_files = sorted(glob.glob('img_align_celeba/*.jpg'))
-    inds = list(range(len(all_files)))
-    val_inds = inds[::10]
-    train_inds = [ind for ind in inds if ind not in val_inds]
-    if subset == 'train':
-        file_list = [all_files[ind] for ind in train_inds]
-    elif subset == 'val':
-        file_list = [all_files[ind] for ind in val_inds]
-    else:
-        raise ValueError('unknown subset %s'%subset)
-
-    ds = ImageFromFile(file_list, channel=3, shuffle=shuffle)
+def get_lfw(subset,batch_size,shuffle,remainder):
+    path = 'lfw_' + subset + '.h5'
+    ds = dataflow.HDF5Data(path,['data'],shuffle=shuffle)
     augs = [
-        imgaug.CenterCrop(160),
         imgaug.Resize(32)]
     ds = AugmentImageComponent(ds, augs)
     ds = BatchData(ds,batch_size,remainder=remainder)
@@ -26,8 +15,8 @@ def get_celeba(subset,batch_size,shuffle,remainder):
     return ds
 
 def get_data():
-    ds_train = get_celeba('train',16,True,False)
-    ds_val = get_celeba('val',16,False,True)
+    ds_train = get_lfw('train',16,True,False)
+    ds_val = get_lfw('val',16,False,True)
     return ds_train, ds_val
 
 if __name__ == '__main__':
