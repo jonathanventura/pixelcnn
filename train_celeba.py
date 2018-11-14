@@ -22,12 +22,12 @@ def get_celeba(subset,batch_size,shuffle,remainder):
         imgaug.Resize(32)]
     ds = AugmentImageComponent(ds, augs)
     ds = BatchData(ds,batch_size,remainder=remainder)
-    #ds = PrefetchDataZMQ(ds, 3)
+    ds = PrefetchDataZMQ(ds, 3)
     return ds
 
 def get_data():
     ds_train = get_celeba('train',16,True,False)
-    ds_val = get_celeba('val',16,True,False)
+    ds_val = get_celeba('val',16,False,True)
     return ds_train, ds_val
 
 if __name__ == '__main__':
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     steps_per_epoch = len(ds_train)
     train_config = AutoResumeTrainConfig(
         model=RGBModel(),
-        data=FeedInput(ds_train),
+        data=QueueInput(ds_train),
         callbacks=[
             ModelSaver(),
             MinSaver('validation_loss'),
