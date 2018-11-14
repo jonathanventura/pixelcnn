@@ -38,7 +38,7 @@ class GrayscaleModel(ModelDesc):
 
     def build_graph(self, images):
         # run PixelCNN model
-        logits = gated_pixelcnn(tf.cast(tf.expand_dims(images,-1),'float32')/255.*2.-1.,num_filters=128,num_layers=15,num_outputs=256)
+        logits = pixelcnn(tf.cast(tf.expand_dims(images,-1),'float32')/255.*2.-1.,num_filters=128,num_layers=15,num_outputs=256)
         probs = tf.nn.softmax(logits,name='probs')
         pred = tf.cast(tf.argmax(logits,axis=-1),'uint8')
 
@@ -64,7 +64,7 @@ class RGBModel(ModelDesc):
 
     def build_graph(self, images):
         # run RGB PixelCNN model
-        logits = rgb_pixelcnn(tf.cast(images,'float32')/255.*2.-1.,num_filters=32,num_layers=7,num_outputs=256)
+        logits = rgb_pixelcnn(tf.cast(images,'float32')/255.*2.-1.,num_filters=128,num_layers=15,num_outputs=256)
         probs = tf.nn.softmax(logits,name='probs')
         pred = tf.cast(tf.argmax(logits,axis=-1),'uint8')
 

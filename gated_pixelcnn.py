@@ -5,7 +5,8 @@ from math import floor, ceil
 
 def _conv(inputs, num_outputs, filter_size, name):
     # relu activation
-    x = tf.nn.relu(inputs)
+    #x = tf.nn.relu(inputs)
+    x = inputs
 
     # get number of input channels
     num_channels_in = inputs.get_shape().as_list()[-1]
@@ -95,8 +96,8 @@ def gated_pixelcnn(inputs,num_filters,num_layers,num_outputs):
             vstack, hstack = _gated_pixel_cnn_layer(vstack,hstack,3,num_filters,i+1)
         
         # final layers
-        x = _conv(hstack, num_filters, [1,1], 'conv1')
-        logits = _conv(x, num_outputs, [1,1], 'logits')
+        x = _conv(tf.nn.relu(hstack), num_filters, [1,1], 'conv1')
+        logits = _conv(tf.nn.relu(x), num_outputs, [1,1], 'logits')
         
     return logits
 
