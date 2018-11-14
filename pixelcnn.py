@@ -58,7 +58,7 @@ def _pixel_cnn_layer(vinput,hinput,filter_size,num_filters,layer_index):
     
     return vconv, hconv
 
-def pixelcnn(inputs,num_filters,num_layers,output_dim):
+def pixelcnn(inputs,num_filters,num_layers,num_outputs):
     """Builds PixelCNN graph.
     Args:
         inputs: input tensor (B,H,W,C)
@@ -78,7 +78,7 @@ def pixelcnn(inputs,num_filters,num_layers,output_dim):
         
         # final layers
         x = _conv(hstack, num_filters, [1,1], name='conv1')
-        logits = _conv(x, output_dim, [1,1], name='logits')
+        logits = _conv(x, num_outputs, [1,1], name='logits')
         
     return logits
 
