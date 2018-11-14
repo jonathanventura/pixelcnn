@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from pixelcnn import pixelcnn
 from rgb_pixelcnn import rgb_pixelcnn
+from gated_pixelcnn import gated_pixelcnn
 from tensorpack import *
 
 class BinaryModel(ModelDesc):
@@ -37,7 +38,7 @@ class GrayscaleModel(ModelDesc):
 
     def build_graph(self, images):
         # run PixelCNN model
-        logits = pixelcnn(tf.cast(tf.expand_dims(images,-1),'float32')/255.*2.-1.,num_filters=128,num_layers=15,num_outputs=256)
+        logits = gated_pixelcnn(tf.cast(tf.expand_dims(images,-1),'float32')/255.*2.-1.,num_filters=128,num_layers=15,num_outputs=256)
         probs = tf.nn.softmax(logits,name='probs')
         pred = tf.cast(tf.argmax(logits,axis=-1),'uint8')
 
