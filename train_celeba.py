@@ -41,8 +41,8 @@ if __name__ == '__main__':
         data=QueueInput(ds_train),
         callbacks=[
             ModelSaver(),
-            MinSaver('validation_loss'),
-            InferenceRunner(ds_val,[ScalarStats(['loss'])])
+            InferenceRunner(ds_val,[ScalarStats(['loss'])]),
+            MinSaver('validation_loss')
         ],
         steps_per_epoch=steps_per_epoch,
         max_epoch=200,
